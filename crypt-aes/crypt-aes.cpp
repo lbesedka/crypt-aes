@@ -103,20 +103,64 @@ BYTE** ShiftRows(BYTE** State) {
     return State;
 }
 
-//из методички эквивалент возведения в степень 
-BYTE x_time(BYTE x) {
-    return  ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
+BYTE MultiplyInGalois(BYTE a, BYTE b) {
+    BYTE result = 0; 
+    for (int i = 0; i < 8; i++) {
+        if (a & 0x01) {    
+            result ^= b;
+        }
+        int flag = (b & 0x80); //8 степень числа
+        b <<= 1;
+        if (flag) { //если выход за 8 степень
+            b ^= 0x1B; // mod x^8 + x^4 + x^3 + x + 1 
+        }
+        a >>= 1;
+    }
+    return result;
 }
 
-BYTE Multiply(BYTE x, BYTE y) {
-
-}
 
 BYTE** MixColumns(BYTE** State) {
-
+    BYTE Matrix[4][4] = { {0x02, 0x03, 0x01, 0x01},
+                      {0x01, 0x02, 0x03, 0x01},
+                      {0x01, 0x01, 0x02, 0x03},
+                      {0x03, 0x01, 0x01, 0x02} };
+    BYTE temp[4][4];
+    //копирую
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            temp[i][j] = State[i][j];
+        }
+    }
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            State[i][j] = MultiplyInGalois(Matrix[i][0], temp[0][j]) ^ MultiplyInGalois(Matrix[i][1], temp[1][j])
+                ^ MultiplyInGalois(Matrix[i][2], temp[2][j]) ^ MultiplyInGalois(Matrix[i][3], temp[3][j]);
+        }
+    }
+    return State; 
 }
 
-
+BYTE** InvMixColumns(BYTE** State) {
+    BYTE Matrix[4][4] = { {0x0E, 0x0B, 0x0D, 0x09},
+                       {0x09, 0x0E, 0x0B, 0x0D},
+                       {0x0D, 0x09, 0x0E, 0x0B},
+                       {0x0B, 0x0D, 0x09, 0x0E} };
+    BYTE temp[4][4];
+    //копирую
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            temp[i][j] = State[i][j];
+        }
+    }
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            State[i][j] = MultiplyInGalois(Matrix[i][0], temp[0][j]) ^ MultiplyInGalois(Matrix[i][1], temp[1][j])
+                ^ MultiplyInGalois(Matrix[i][2], temp[2][j]) ^ MultiplyInGalois(Matrix[i][3], temp[3][j]);
+        }
+    }
+    return State;
+}
 
 int main()
 {
@@ -144,5 +188,14 @@ int main()
         }
         cout << endl;
     }
+    BYTE** Mixed = MixColumns(Shifted); 
+    cout << "Mixed" << endl;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) { 
+            cout << Mixed[i][j];
+        }
+        cout << endl;
+    }
+
 }
 
