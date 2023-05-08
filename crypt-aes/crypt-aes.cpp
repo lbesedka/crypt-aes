@@ -50,6 +50,24 @@ const BYTE invSbox[256] = {
         0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
 };
 
+
+int Rcon[255] = { 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a,
+                0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39,
+                0x72, 0xe4, 0xd3, 0xbd, 0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a,
+                0x74, 0xe8, 0xcb, 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8,
+                0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef,
+                0xc5, 0x91, 0x39, 0x72, 0xe4, 0xd3, 0xbd, 0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc,
+                0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb, 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b,
+                0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3,
+                0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39, 0x72, 0xe4, 0xd3, 0xbd, 0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94,
+                0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb, 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
+                0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35,
+                0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39, 0x72, 0xe4, 0xd3, 0xbd, 0x61, 0xc2, 0x9f,
+                0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb, 0x8d, 0x01, 0x02, 0x04,
+                0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63,
+                0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39, 0x72, 0xe4, 0xd3, 0xbd,
+                0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb };
+
 BYTE** State(string text) {
     BYTE** StateArray = new BYTE*[4];
     for (int i = 0; i < 4; i++)
@@ -100,6 +118,7 @@ BYTE** ShiftRows(BYTE** State) {
         for (int j = 0; j < 4; ++j)
             State[i][j] = bucket[(j + 1) % 4];
     }
+    delete bucket;
     return State;
 }
 
@@ -162,40 +181,89 @@ BYTE** InvMixColumns(BYTE** State) {
     return State;
 }
 
+
+BYTE* KeyExpansion(string key) {
+    BYTE w [176];
+    int i = 0; 
+    //первый раунд 
+    for (i = 0; i < 4; i++) {
+        w[i*4] = key[i*4]; 
+        w[i*4+1] = key[i * 4+1];
+        w[i*4+2] = key[i * 4+2];
+        w[i*4+3] = key[i * 4 + 3] ;
+    }
+    i = 4; 
+    BYTE temp[4];
+    BYTE bucket[4];
+    while (i < 10 * (4 + 1)) {
+        for (int j = 0;j < 4;j++) {
+            temp[j] = w[(i - 1) * 4 + j];
+            bucket[j] = w[(i - 1) * 4 + j];
+        }
+        if ((i % 4) == 0) {
+            for (int j = 0; j < 4; ++j) { 
+                temp[j] = bucket[(j + 1) % 4]; //ROTWord
+                temp[j] = Sbox[temp[j]]; //SubWord
+            }
+            temp[0] ^= Rcon[i / 4];
+        }
+        
+        w[i * 4] = w[(i-1) * 4] ^ temp[0];
+        w[i * 4 + 1] = w[(i-1) * 4 + 1] ^ temp[1];
+        w[i * 4 + 2] = w[(i-1) * 4 + 2] ^ temp[2];
+        w[i * 4 + 3] = w[(i-1) * 4 + 3] ^ temp[3];
+        ++i;
+    }
+    return w;
+}
+
+BYTE** AddRoundKey(BYTE** State, BYTE* w, int round) {
+    for (int i = 0;i < 4;i++)
+    {
+        for (int j = 0;j < 4;j++)
+        {
+            State[j][i] ^= w[round * 4 * 4 + i * 4 + j];
+        }
+    }
+    return State;
+}
+
+
 int main()
 {
-    string text = "abcdhgreadfchnkl";
-    BYTE** array_n = State(text); 
-    /*for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            cout << array_n[i][j]; 
-        }
-        cout << endl;
-    }*/
-    BYTE** Sub_Bytes = SubBytes(array_n);
+    //string text = "abcdhgreadfchnkl";
+    //BYTE** array_n = State(text); 
+    ///*for (int i = 0; i < 4; i++) {
+    //    for (int j = 0; j < 4; j++) {
+    //        cout << array_n[i][j]; 
+    //    }
+    //    cout << endl;
+    //}*/
+    //BYTE** Sub_Bytes = SubBytes(array_n);
  
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            cout << Sub_Bytes[i][j];
-        }
-        cout << endl;
-    }
-    cout << endl;
-    BYTE** Shifted = ShiftRows(Sub_Bytes);
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            cout << Shifted[i][j];
-        }
-        cout << endl;
-    }
-    BYTE** Mixed = MixColumns(Shifted); 
-    cout << "Mixed" << endl;
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) { 
-            cout << Mixed[i][j];
-        }
-        cout << endl;
-    }
-
+    //for (int i = 0; i < 4; i++) {
+    //    for (int j = 0; j < 4; j++) {
+    //        cout << Sub_Bytes[i][j];
+    //    }
+    //    cout << endl;
+    //}
+    //cout << endl;
+    //BYTE** Shifted = ShiftRows(Sub_Bytes);
+    //for (int i = 0; i < 4; i++) {
+    //    for (int j = 0; j < 4; j++) {
+    //        cout << Shifted[i][j];
+    //    }
+    //    cout << endl;
+    //}
+    //BYTE** Mixed = MixColumns(Shifted); 
+    //cout << "Mixed" << endl;
+    //for (int i = 0; i < 4; i++) {
+    //    for (int j = 0; j < 4; j++) { 
+    //        cout << Mixed[i][j];
+    //    }
+    //    cout << endl;
+    //}
+    string key = "abcdhgreadfchnkl"; 
+    KeyExpansion(key); 
 }
 
