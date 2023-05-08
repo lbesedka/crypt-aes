@@ -270,12 +270,12 @@ void PrintState(BYTE** state, string title)
 char* Encrypt(string text, string key) {
     int round = 0;
     BYTE** state = State(text);
-    PrintState(state, "Initial state: ");
-    cout << endl;
+    //PrintState(state, "Initial state: ");
+    //cout << endl;
     char* out = new char[17];
     const BYTE* w = KeyExpansion(key);
     state = AddRoundKey(state, w, round);
-    PrintState(state, "After first roundkey: ");
+    //PrintState(state, "After first roundkey: ");
     for (round = 1; round < 10; round++) {
         state = SubBytes(state);
         //PrintState(state, "After SubBytes: ");
@@ -334,13 +334,30 @@ char* Decrypt(string chipher_text, string key) {
             out[i * 4 + j] = state[j][i];
         }
     }
-    PrintState(state, "Decrypted: ");
-    cout << endl;
+    //PrintState(state, "Decrypted: ");
+    //cout << endl;
     out[16] = '\0';
     return out;
 }
 
 
+vector<string> PreparateText(string text) {
+    vector<string> preparedStrings;
+    string tmp = "";
+    while (text.length() % 16 != 0)
+    {
+        text += "a";
+    }
+    for (int i = 0; i < text.length(); i++) {
+        tmp += text[i];
+        if ((i + 1) % 16 == 0 && i != 0)
+        {
+            preparedStrings.push_back(tmp);
+            tmp = "";
+        }
+    }
+    return preparedStrings;
+}
 
 int main()
 {
@@ -350,6 +367,16 @@ int main()
     char tmp_key[17] = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c, '\0' };
     string key = string(tmp_key);
     text = "Hello Im Lera!!!!";
-    cout << string(Decrypt(string(Encrypt(text, key)), key)) << endl;
+    string text2 = "asdfghjklzxcvbnmqwertyuiopaqswdefrgthyjukilocvbnmxzqswfrgtjuf";
+    vector<string> preparatedText = PreparateText(text2);
+    cout << "Initial text: " << endl;
+    for (int i = 0; i < preparatedText.size(); i++)
+        cout << preparatedText[i] << endl;
+    cout << "Encrypted: " << endl;
+    for (int i = 0; i < preparatedText.size(); i++)
+        cout << string(Encrypt(preparatedText[i], key)) << endl;
+    cout << "Decrypted text: " << endl;
+    for (int i = 0; i < preparatedText.size(); i++)
+        cout << string(Decrypt(string(Encrypt(preparatedText[i], key)), key)) << endl;
 }
 
