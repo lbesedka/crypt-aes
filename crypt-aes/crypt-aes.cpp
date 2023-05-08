@@ -112,22 +112,37 @@ BYTE** SubBytes(BYTE** State) {
 
 BYTE** ShiftRows(BYTE** State) {
     BYTE* bucket;
+    int k = 0;
     for (int i = 1; i < 4; ++i)
     {
-        bucket = BucketHelper(State[i]);
-        for (int j = 0; j < 4; ++j)
-            State[i][j] = bucket[(j + 1) % 4];
+        k = i;
+        while (k != 0)
+        {
+            bucket = BucketHelper(State[i]);
+            for (int j = 0; j < 4; ++j)
+                State[i][j] = bucket[(j + 1) % 4];
+            --k;
+        }
     }
     return State;
 }
 
 BYTE** InvShiftRows(BYTE** State) {
     BYTE* bucket;
+    int k = 0;
     for (int i = 1; i < 4; ++i)
     {
-        bucket = BucketHelper(State[i]);
-        for (int j = 0; j < 4; ++j)
-            State[i][j] = bucket[(j - 1) % 4];
+        k = i;
+        while (k != 0)
+        {
+            bucket = BucketHelper(State[i]);
+            for (int j = 0; j < 4; ++j)
+                if ((j - 1) == -1)
+                    State[i][j] = bucket[3];
+                else
+                    State[i][j] = bucket[(j - 1) % 4];
+            --k;
+        }
     }
     return State;
 }
@@ -213,7 +228,7 @@ BYTE* KeyExpansion(string key) {
         if ((i % 4) == 0) {
             for (int j = 0; j < 4; ++j) { 
                 temp[j] = bucket[(j + 1) % 4]; //ROTWord
-                temp[j] = Sbox[temp[j]]; //SubWord
+                temp[j] = Sbox[(temp[j])]; //SubWord
             }
             temp[0] ^= Rcon[i / 4];
         }
@@ -227,6 +242,8 @@ BYTE* KeyExpansion(string key) {
     return w;
 }
 
+
+
 BYTE** AddRoundKey(BYTE** State, const BYTE* w, int round) {
     for (int i = 0;i < 4;i++)
     {
@@ -238,21 +255,50 @@ BYTE** AddRoundKey(BYTE** State, const BYTE* w, int round) {
     return State;
 }
 
+
+void PrintState(BYTE** state, string title)
+{
+    cout << title << endl;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            cout << (int)state[i][j] << " ";
+        }
+        cout << endl;
+    }
+}
+
 char* Encrypt(string text, string key) {
     int round = 0;
     BYTE** state = State(text);
+    PrintState(state, "Initial state: ");
+    cout << endl;
     char* out = new char[17];
     const BYTE* w = KeyExpansion(key);
     state = AddRoundKey(state, w, round);
+    PrintState(state, "After first roundkey: ");
     for (round = 1; round < 10; round++) {
         state = SubBytes(state);
+        //PrintState(state, "After SubBytes: ");
+        //cout << endl;
         state = ShiftRows(state); 
+        //PrintState(state, "After ShiftRows: ");
+        //cout << endl;
         state = MixColumns(state);
+        //PrintState(state, "After MixColumns: ");
+        //cout << endl;
         state = AddRoundKey(state, w, round);
+        //PrintState(state, "After Round key: ");
+        //cout << endl;
     }
     state = SubBytes(state);
+    //PrintState(state, "After final SubBytes: ");
+    //cout << endl;
     state = ShiftRows(state);
+    //PrintState(state, "After final ShiftRows: ");
+    //cout << endl;
     state = AddRoundKey(state, w,10);
+    //PrintState(state, "After final AddRoundKey: ");
+    //cout << endl;
 
     for (int i = 0;i < 4;i++)
     {
@@ -272,16 +318,10 @@ char* Decrypt(string chipher_text, string key) {
     BYTE* w = KeyExpansion(key);
     state = AddRoundKey(state, w, round);
     for (round = 9; round > 0; round--) {
-        state = InvSubBytes(state);
         state = InvShiftRows(state);
-        state = InvMixColumns(state);
+        state = InvSubBytes(state);
         state = AddRoundKey(state, w, round);
-        //state = InvShiftRows(state);
-        //state = InvSubBytes(state);
-        ////state = InvShiftRows(state); 
-        //state = AddRoundKey(state, w, round);
-        //state = InvMixColumns(state); 
-        ////state = AddRoundKey(state, w, round);
+        state = InvMixColumns(state);
     }
     state = InvSubBytes(state);
     state = InvShiftRows(state);
@@ -294,55 +334,22 @@ char* Decrypt(string chipher_text, string key) {
             out[i * 4 + j] = state[j][i];
         }
     }
+    PrintState(state, "Decrypted: ");
+    cout << endl;
     out[16] = '\0';
     return out;
 }
 
+
+
 int main()
 {
-    string text = "abcdhgreadfchnkl";
-    string key = "abcdhgreadffhndl";
-    /*for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            cout << array_n[i][j]; 
-        }
-        cout << endl;
-    }
-    array_n = SubBytes(array_n);
- 
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            cout << array_n[i][j];
-        }
-        cout << endl;
-    }
-    cout << endl;
-    array_n = ShiftRows(array_n);
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            cout << array_n[i][j];
-        }
-        cout << endl;
-    }
-    array_n = MixColumns(array_n);
-    cout << "Mixed" << endl;
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) { 
-            cout << array_n[i][j];
-        }
-        cout << endl;
-    }
-    string key = "abcdhgreadfchnkl";
-    array_n = AddRoundKey(array_n, KeyExpansion(key), 0);
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            cout << array_n[i][j];
-        }
-        cout << endl;
-    }*/
-    //string text = "abcdhgreadfchnkl";
-    //KeyExpansion(key); 
-    cout << string(Encrypt(text, key)) << endl; 
+    setlocale(LC_ALL, "EN");
+    char tmp_text[17] = { 0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34, '\0'};
+    string text = string(tmp_text);
+    char tmp_key[17] = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c, '\0' };
+    string key = string(tmp_key);
+    text = "Hello Im Lera!!!!";
     cout << string(Decrypt(string(Encrypt(text, key)), key)) << endl;
 }
 
